@@ -6,7 +6,8 @@
   "description": "Extract and manage email addresses from messages with smart filtering",
   "browser_specific_settings": {
     "gecko": {
-      "id": "emailFinder@accessibility.extensions.makingStuffForFun.net"
+      "id": "emailFinder@accessibility.extensions.makingStuffForFun.net",
+      "strict_min_version": "128.0"
     }
   },
   "permissions": [
