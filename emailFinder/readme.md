@@ -1,33 +1,50 @@
 ## Email Address Finder
 
-This extension will find as many email addresses in the Body, From, and CC fields that it can.
+A Thunderbird extension that helps users extract and manage email addresses from messages with powerful filtering capabilities.
 
-It will then put them into a menu.
+### Features
 
-The user will be able to click on the menu item, and copy the selected address to the clipboard.
-
-The menu is currently mouse driven, but in time shortcut key selection will be available, which will allow for accessibility tools like Talon Voice to access the menus.
+- **Extract Email Addresses**: Automatically finds email addresses in message headers (To, Cc, From) and body
+- **Smart Deduplication**: Automatically removes duplicate email addresses
+- **Multiple Copy Options**:
+  - Copy To (recipients only)
+  - Copy Cc (cc recipients only)
+  - Copy To + Cc (combined recipients)
+  - Copy All (all found emails)
+- **Flexible Filtering**: 
+  - Exclude specific email addresses
+  - Exclude entire domains
+- **Settings Page**: Manage your blacklist directly from Firefox/Thunderbird preferences
 
 ### Usage
 
-Using the mouse an an exmple, simply click on the "Find Email/s" button.  It will search for all emails, in that message (and headers), and provide them in a list.  Click that email in the menu, and it will copy it to the clipboard.
+1. Open an email message in Thunderbird
+2. Click the "eMail Address Finder" button in the compose or message display toolbar
+3. Choose from the menu options:
+   - **Copy All** - Copy all filtered emails
+   - **Copy To** - Copy only To field recipients
+   - **Copy Cc** - Copy only Cc field recipients
+   - **Copy To + Cc** - Copy both To and Cc recipients
+   - Individual emails - Click any specific email to copy just that address
 
+### Settings
 
-Utilizing Talon Voice as an example, the user will be able to speak to Thunderbird, and give
-commands such as:
+Access the settings through Thunderbird's Add-ons page:
 
- - Find Addresses (Activate the menu)
- - Copy Three (Copy the email address in menu entry three to the clipboard)
+1. Open Thunderbird Preferences/Settings
+2. Go to Extensions
+3. Click "Options" for eMail Address Finder
+4. Configure:
+   - **Excluded Addresses**: Enter email addresses to ignore (one per line)
+   - **Excluded Domains**: Enter domain names to ignore (one per line)
 
- If utilizing keyboard instead of voice, the user will be able to type commands such as:
+All excluded items are case-insensitive for convenience.
 
-  - CTRL B (Activate the menu)
-  - C (Compose a message to the email address in menu entry three to the clipboard)
+### Accessibility
 
+This extension is designed with accessibility in mind, supporting users with RSI and other physical disabilities by reducing repetitive mouse interactions. Future versions will include keyboard shortcut support and voice command compatibility (e.g., with Talon Voice).
 
-However, for now, it is mouse only.  Talon voice can still move the mouse, to the menu position and click, if users would like to use it whilst in development.
+### About
 
-
-For users with RSI, and other physical disabilities, this will assist to reduce their reliance
-on the mouse, especially for those that are dealing with emails and email addresses all day.
+Created by makingStuffForFun
 
