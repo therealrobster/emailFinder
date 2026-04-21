@@ -14,6 +14,10 @@ yarn.lock
 # Build artifacts
 dist/
 build/
+emailFinder-v*.zip
+emailFinder-v*.xpi
+.build-emailfinder-tmp/
+thunderbird-store-details.md
 
 # Environment
 .env
