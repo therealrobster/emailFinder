@@ -1,36 +1,78 @@
-# emailFinder
-Thunderbird extension for finding all emails in a message
 
-## Email Address Finder
+A free, open-source Thunderbird extension for quickly extracting and copying email addresses from messages.
 
-This extension will find as many email addresses in the Body, From, and CC fields that it can.
+## Overview
 
-It will then put them into a menu.
+emailFinder scans message headers and content, removes duplicates, and gives you fast copy actions from a compact menu. It is designed for high-volume email workflows where speed and accuracy matter.
 
-The user will be able to click on the menu item, and copy the selected address to the clipboard.
+## Highlights
 
-The menu is currently mouse driven, but in time shortcut key selection will be available, which will allow for accessibility tools like Talon Voice to access the menus.
+- Extracts addresses from:
+  - To
+  - Cc
+  - From
+  - Message body
+- Deduplicates addresses automatically
+- One-click copy actions:
+  - Copy To
+  - Copy Cc
+  - Copy To + Cc
+  - Copy All
+- Individual address copy from the same menu
+- Settings page for exclusions:
+  - Ignore specific email addresses
+  - Ignore whole domains
+- Case-insensitive filtering logic
 
-### Usage
+## Why It Helps
 
-Using the mouse an an exmple, simply click on the "Find Email/s" button.  It will search for all emails, in that message (and headers), and provide them in a list.  Click that email in the menu, and it will copy it to the clipboard.
+- Saves time when triaging or replying to large threads
+- Reduces repetitive copy/paste work
+- Keeps copied address lists clean and consistent
 
+## Install
 
-Utilizing Talon Voice as an example, the user will be able to speak to Thunderbird, and give
-commands such as:
+Preferred installation is via Thunderbird Add-ons:
 
- - Find Addresses (Activate the menu)
- - Copy Three (Copy the email address in menu entry three to the clipboard)
+- https://addons.thunderbird.net/en-US/thunderbird/addon/email-address-finder
 
- If utilizing keyboard instead of voice, the user will be able to type commands such as:
+Install steps:
 
-  - CTRL B (Activate the menu)
-  - C (Compose a message to the email address in menu entry three to the clipboard)
+1. Open the add-on page above.
+2. Click Add to Thunderbird.
+3. Confirm permissions when prompted.
+4. The extension will be available from your Thunderbird toolbar/menu actions.
 
+## Usage
 
-However, for now, it is mouse only.  Talon voice can still move the mouse, to the menu position and click, if users would like to use it whilst in development.
+1. Open any message in Thunderbird.
+2. Click the eMail Address Finder toolbar/menu button.
+3. Select an individual address, or use one of the copy actions.
+4. Optional: open settings to add address/domain exclusions.
 
+## Settings
 
-For users with RSI, and other physical disabilities, this will assist to reduce their reliance
-on the mouse, especially for those that are dealing with emails and email addresses all day.
+Open settings from either:
+
+- The extension menu option: Open Settings
+- Add-ons and Themes -> Extensions -> eMail Address Finder -> Preferences/Options
+
+Settings are stored in extension storage and applied automatically.
+
+## Compatibility Notes
+
+- Built for Thunderbird MailExtension APIs.
+- Current UI is menu-driven and optimized for reliability and speed.
+
+## Accessibility
+
+emailFinder helps reduce repetitive mouse/keyboard effort during address collection workflows. It is especially useful for users who process many messages per day.
+
+## Contributing
+
+Issues and pull requests are welcome. If you find an edge case (header format, parsing behavior, filtering), please open an issue with a sample scenario.
+
+## License
+
+This project is free and open source. See [LICENSE](LICENSE).
 
