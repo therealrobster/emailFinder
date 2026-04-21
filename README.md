@@ -1,3 +1,4 @@
+# emailFinder
 
 A free, open-source Thunderbird extension for quickly extracting and copying email addresses from messages.
 
