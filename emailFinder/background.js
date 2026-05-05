@@ -236,6 +236,14 @@ async function createMenuItem(id, title, options = {}) {
   }
 }
 
+async function createSectionSeparator() {
+  if (menuItemIds.length === 0) {
+    return;
+  }
+
+  await createMenuItem(`separator-${Date.now()}-${menuItemIds.length}`, "", { type: "separator" });
+}
+
 browser.storage.onChanged.addListener(() => {
   loadSettings();
 });
@@ -285,9 +293,12 @@ browser.menus.onShown.addListener(async (info, tab) => {
       await createMenuItem("email-limited", `... and ${emailData.all.length - maxIndividualEmails} more`, { enabled: false });
     }
 
-    await createMenuItem(`separator-${Date.now()}`, "", { type: "separator" });
-
     const toPlusCc = [...new Set([...emailData.to, ...emailData.cc])];
+    const hasCopyActions = emailData.all.length > 0 || emailData.to.length > 0 || emailData.cc.length > 0 || toPlusCc.length > 0;
+
+    if (hasCopyActions) {
+      await createSectionSeparator();
+    }
 
     await createMenuItem("copy-all", `Copy All (${emailData.all.length})`, {
       action: async () => copyToClipboard(emailData.all)
@@ -311,7 +322,7 @@ browser.menus.onShown.addListener(async (info, tab) => {
       });
     }
 
-    await createMenuItem(`separator-${Date.now()}-controls`, "", { type: "separator" });
+    await createSectionSeparator();
     await createMenuItem("email-header", `Found ${emailData.all.length} email address(es)`, { enabled: false });
     await createMenuItem("open-settings", "Open Settings", {
       action: async () => {
