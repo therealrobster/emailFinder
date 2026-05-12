@@ -310,6 +310,13 @@ browser.menus.onShown.addListener(async (info, tab) => {
         action: async () => copyToClipboard(toPlusCc)
       });
     }
+    
+    const fromPlusCc = [...new Set([...emailData.from, ...emailData.cc])];
+    if (fromPlusCc.length > 0) {
+      await createMenuItem("from-to-cc", `Copy From + Cc (${fromPlusCc.length})`, {
+        action: async () => copyToClipboard(fromPlusCc),
+      });
+    }
 
     await createMenuItem(`separator-${Date.now()}-controls`, "", { type: "separator" });
     await createMenuItem("email-header", `Found ${emailData.all.length} email address(es)`, { enabled: false });
