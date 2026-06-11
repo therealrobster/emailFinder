@@ -11,6 +11,8 @@ A Thunderbird extension that helps users extract and manage email addresses from
   - Copy Cc (cc recipients only)
   - Copy To + Cc (combined recipients)
   - Copy All (all found emails)
+  - Copy From (from recipients only)
+  - Copy From + CC (combined recipients)
 - **Flexible Filtering**: 
   - Exclude specific email addresses
   - Exclude entire domains
@@ -25,7 +27,9 @@ A Thunderbird extension that helps users extract and manage email addresses from
    - **Copy To** - Copy only To field recipients
    - **Copy Cc** - Copy only Cc field recipients
    - **Copy To + Cc** - Copy both To and Cc recipients
-   - Individual emails - Click any specific email to copy just that address
+   - **Copy From** - Copy recipients only
+   - **Copy From + CC** - Copy From and CC
+   - Individual emails - Click any specific email address to copy just that address
 
 ### Settings
 

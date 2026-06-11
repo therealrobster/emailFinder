@@ -6,6 +6,7 @@ const DEFAULT_SETTINGS = {
 const MENU_CONTEXTS = ["message_display_action_menu", "compose_action_menu"];
 const menuItemIds = [];
 const menuActions = new Map();
+let menuInstanceId = 0;
 
 let currentSettings = { ...DEFAULT_SETTINGS };
 
@@ -197,14 +198,21 @@ async function copyToClipboard(emails) {
   }
 }
 
-async function removeAllMenuItems() {
-  for (const id of menuItemIds) {
-    try {
-      await browser.menus.remove(id);
-    } catch (error) {
-      console.warn(`Failed to remove menu item ${id}:`, error);
-    }
+function isActionMenuShown(info) {
+  if (!info || !Array.isArray(info.contexts)) {
+    return false;
   }
+
+  return info.contexts.some(context => MENU_CONTEXTS.includes(context));
+}
+
+async function removeAllMenuItems() {
+  try {
+    await browser.menus.removeAll();
+  } catch (error) {
+    console.warn("Failed to remove all menu items:", error);
+  }
+
   menuItemIds.length = 0;
   menuActions.clear();
 }
@@ -262,9 +270,23 @@ browser.menus.onClicked.addListener(async (info, tab) => {
 });
 
 browser.menus.onShown.addListener(async (info, tab) => {
+  if (!isActionMenuShown(info)) {
+    return;
+  }
+
+  const currentMenuInstanceId = ++menuInstanceId;
+
   try {
     await removeAllMenuItems();
+    await createMenuItem("email-header", "Scanning for email addresses...", { enabled: false });
+    await browser.menus.refresh();
+
     const emailData = await getEmailAddresses(info, tab);
+    if (currentMenuInstanceId !== menuInstanceId) {
+      return;
+    }
+
+    await removeAllMenuItems();
 
     if (emailData.all.length === 0) {
       await createMenuItem("email-header", "Found 0 email address(es)", { enabled: false });
@@ -278,27 +300,9 @@ browser.menus.onShown.addListener(async (info, tab) => {
       return;
     }
 
-    // Show individual email addresses first.
-    const maxIndividualEmails = 15;
-    const emailsToShow = emailData.all.slice(0, maxIndividualEmails);
-    for (let i = 0; i < emailsToShow.length; i++) {
-      const email = emailsToShow[i];
-      const id = `email-item-${i}`;
-      await createMenuItem(id, email, {
-        action: async () => copyToClipboard([email])
-      });
-    }
-
-    if (emailData.all.length > maxIndividualEmails) {
-      await createMenuItem("email-limited", `... and ${emailData.all.length - maxIndividualEmails} more`, { enabled: false });
-    }
-
     const toPlusCc = [...new Set([...emailData.to, ...emailData.cc])];
-    const hasCopyActions = emailData.all.length > 0 || emailData.to.length > 0 || emailData.cc.length > 0 || toPlusCc.length > 0;
 
-    if (hasCopyActions) {
-      await createSectionSeparator();
-    }
+    await createMenuItem("email-header", `Found ${emailData.all.length} email address(es)`, { enabled: false });
 
     await createMenuItem("copy-all", `Copy All (${emailData.all.length})`, {
       action: async () => copyToClipboard(emailData.all)
@@ -307,6 +311,12 @@ browser.menus.onShown.addListener(async (info, tab) => {
     if (emailData.to.length > 0) {
       await createMenuItem("copy-to", `Copy To (${emailData.to.length})`, {
         action: async () => copyToClipboard(emailData.to)
+      });
+    }
+
+    if (emailData.from.length > 0) {
+      await createMenuItem("copy-from", `Copy From (${emailData.from.length})`, {
+        action: async () => copyToClipboard(emailData.from)
       });
     }
 
@@ -322,8 +332,29 @@ browser.menus.onShown.addListener(async (info, tab) => {
       });
     }
 
+    const fromPlusCc = [...new Set([...emailData.from, ...emailData.cc])];
+    if (fromPlusCc.length > 0) {
+      await createMenuItem("copy-from-cc", `Copy From + Cc (${fromPlusCc.length})`, {
+        action: async () => copyToClipboard(fromPlusCc)
+      });
+    }
+
     await createSectionSeparator();
-    await createMenuItem("email-header", `Found ${emailData.all.length} email address(es)`, { enabled: false });
+
+    const maxIndividualEmails = 15;
+    const emailsToShow = emailData.all.slice(0, maxIndividualEmails);
+    for (let i = 0; i < emailsToShow.length; i++) {
+      const email = emailsToShow[i];
+      const id = `email-item-${i}`;
+      await createMenuItem(id, email, {
+        action: async () => copyToClipboard([email])
+      });
+    }
+
+    if (emailData.all.length > maxIndividualEmails) {
+      await createMenuItem("email-limited", `... and ${emailData.all.length - maxIndividualEmails} more`, { enabled: false });
+    }
+
     await createMenuItem("open-settings", "Open Settings", {
       action: async () => {
         await browser.runtime.openOptionsPage();
