@@ -1,6 +1,7 @@
 const DEFAULT_SETTINGS = {
   addressBlacklist: [],
-  domainBlacklist: []
+  domainBlacklist: [],
+  individualEmailsPosition: "bottom"
 };
 
 const MENU_CONTEXTS = ["message_display_action_menu", "compose_action_menu"];
@@ -10,6 +11,7 @@ let menuInstanceId = 0;
 
 let currentSettings = { ...DEFAULT_SETTINGS };
 
+// Returns blank email lists for every category. Used when no message is open or something went wrong.
 function getEmptyEmailData() {
   return {
     to: [],
@@ -20,23 +22,29 @@ function getEmptyEmailData() {
   };
 }
 
+// Loads the user's saved settings (blocked addresses, blocked domains, menu layout) into memory.
 async function loadSettings() {
   try {
     const result = await browser.storage.sync.get(DEFAULT_SETTINGS);
     currentSettings = {
       addressBlacklist: Array.isArray(result.addressBlacklist) ? result.addressBlacklist : [],
-      domainBlacklist: Array.isArray(result.domainBlacklist) ? result.domainBlacklist : []
+      domainBlacklist: Array.isArray(result.domainBlacklist) ? result.domainBlacklist : [],
+      individualEmailsPosition: result.individualEmailsPosition === "top" ? "top" : "bottom"
     };
   } catch (error) {
     console.error("Failed to load settings:", error);
   }
 }
 
+// Gets the domain part of an email address — everything after the @ symbol.
+// Example: "user@gmail.com" becomes "gmail.com"
 function extractDomain(email) {
   const parts = String(email).toLowerCase().split("@");
   return parts.length > 1 ? parts[1] : "";
 }
 
+// Decides whether an email address should be left out of results because the user blocked it.
+// An address can be blocked directly, or because its whole domain is on the blocked list.
 function isFiltered(email) {
   const normalizedEmail = String(email).toLowerCase();
   const domain = extractDomain(normalizedEmail);
@@ -52,10 +60,13 @@ function isFiltered(email) {
   return false;
 }
 
+// Takes a list of email addresses and removes any that the user has chosen to block.
 function filterEmails(emails) {
   return emails.filter(email => !isFiltered(email));
 }
 
+// Looks through a piece of text and pulls out every email address it can find.
+// Duplicate addresses are removed, and everything is converted to lowercase.
 function extractEmailsFromText(text) {
   if (!text) {
     return [];
@@ -65,6 +76,7 @@ function extractEmailsFromText(text) {
   return [...new Set(matches.map(email => email.toLowerCase()))];
 }
 
+// Reads email addresses from a specific message header field, such as "to", "cc", or "from".
 function getHeaderEmails(headers, name) {
   if (!headers || !Array.isArray(headers[name])) {
     return [];
@@ -72,6 +84,7 @@ function getHeaderEmails(headers, name) {
   return extractEmailsFromText(headers[name].join(","));
 }
 
+// Gathers all the readable text from an email body, including text inside nested parts.
 function collectInlineText(parts) {
   if (!Array.isArray(parts)) {
     return "";
@@ -89,12 +102,13 @@ function collectInlineText(parts) {
   return chunks.join("\n");
 }
 
+// Figures out which email message the user is looking at right now.
+// Tries a few different ways because Thunderbird can provide the message in different places.
 async function resolveCurrentMessage(info, tab) {
   if (info && info.selectedMessages && Array.isArray(info.selectedMessages.messages) && info.selectedMessages.messages.length > 0) {
     return info.selectedMessages.messages[0];
   }
 
-  // Thunderbird-compatible fallback: read selected messages from a mail tab.
   if (tab && tab.id !== undefined && messenger.mailTabs && messenger.mailTabs.getSelectedMessages) {
     try {
       const selected = await messenger.mailTabs.getSelectedMessages(tab.id);
@@ -106,7 +120,6 @@ async function resolveCurrentMessage(info, tab) {
     }
   }
 
-  // Final fallback: find active mail tab and read its selected messages.
   if (messenger.mailTabs && messenger.mailTabs.query && messenger.mailTabs.getSelectedMessages) {
     try {
       const mailTabs = await messenger.mailTabs.query({ active: true, currentWindow: true });
@@ -124,6 +137,8 @@ async function resolveCurrentMessage(info, tab) {
   return null;
 }
 
+// Scans the current message and collects email addresses from the To, Cc, From, and body fields.
+// Blocked addresses and domains are removed before the results are returned.
 async function getEmailAddresses(info, tab) {
   try {
     const message = await resolveCurrentMessage(info, tab);
@@ -131,12 +146,10 @@ async function getEmailAddresses(info, tab) {
       return getEmptyEmailData();
     }
 
-    // Start with direct message fields when present.
     let toEmails = extractEmailsFromText(Array.isArray(message.recipients) ? message.recipients.join(",") : message.recipients);
     let ccEmails = extractEmailsFromText(Array.isArray(message.ccList) ? message.ccList.join(",") : message.ccList);
     let fromEmails = extractEmailsFromText(message.author);
 
-    // Thunderbird commonly exposes richer header data via messages.getFull().
     try {
       const fullMessage = await messenger.messages.getFull(message.id);
       const headers = fullMessage && fullMessage.headers ? fullMessage.headers : null;
@@ -176,6 +189,8 @@ async function getEmailAddresses(info, tab) {
   }
 }
 
+// Copies one or more email addresses to the clipboard as a comma-separated list.
+// Returns true if it worked, or false if there was nothing valid to copy.
 async function copyToClipboard(emails) {
   try {
     if (!Array.isArray(emails)) {
@@ -198,6 +213,8 @@ async function copyToClipboard(emails) {
   }
 }
 
+// Checks whether the menu that just opened is one of our extension menus.
+// This stops us from reacting to unrelated menus elsewhere in Thunderbird.
 function isActionMenuShown(info) {
   if (!info || !Array.isArray(info.contexts)) {
     return false;
@@ -206,6 +223,7 @@ function isActionMenuShown(info) {
   return info.contexts.some(context => MENU_CONTEXTS.includes(context));
 }
 
+// Removes every menu item this extension created, so we can rebuild the menu from scratch.
 async function removeAllMenuItems() {
   try {
     await browser.menus.removeAll();
@@ -217,6 +235,8 @@ async function removeAllMenuItems() {
   menuActions.clear();
 }
 
+// Adds a single item to the extension menu, such as a button, a label, or a divider line.
+// If an action is provided, it is stored so we can run it when the user clicks that item.
 async function createMenuItem(id, title, options = {}) {
   try {
     const item = {
@@ -244,6 +264,8 @@ async function createMenuItem(id, title, options = {}) {
   }
 }
 
+// Adds a horizontal divider line to the menu to visually separate groups of items.
+// Does nothing if the menu is still empty, because a divider needs something above it.
 async function createSectionSeparator() {
   if (menuItemIds.length === 0) {
     return;
@@ -252,10 +274,97 @@ async function createSectionSeparator() {
   await createMenuItem(`separator-${Date.now()}-${menuItemIds.length}`, "", { type: "separator" });
 }
 
+// Adds the bulk copy buttons to the menu, such as "Copy All", "Copy To", and "Copy Cc".
+// Each button only appears if there are addresses in that group to copy.
+async function createCopyActionItems(emailData) {
+  const toPlusCc = [...new Set([...emailData.to, ...emailData.cc])];
+  const fromPlusCc = [...new Set([...emailData.from, ...emailData.cc])];
+
+  await createMenuItem("copy-all", `Copy All (${emailData.all.length})`, {
+    action: async () => copyToClipboard(emailData.all)
+  });
+
+  if (emailData.to.length > 0) {
+    await createMenuItem("copy-to", `Copy To (${emailData.to.length})`, {
+      action: async () => copyToClipboard(emailData.to)
+    });
+  }
+
+  if (emailData.from.length > 0) {
+    await createMenuItem("copy-from", `Copy From (${emailData.from.length})`, {
+      action: async () => copyToClipboard(emailData.from)
+    });
+  }
+
+  if (emailData.cc.length > 0) {
+    await createMenuItem("copy-cc", `Copy Cc (${emailData.cc.length})`, {
+      action: async () => copyToClipboard(emailData.cc)
+    });
+  }
+
+  if (toPlusCc.length > 0) {
+    await createMenuItem("copy-to-cc", `Copy To + Cc (${toPlusCc.length})`, {
+      action: async () => copyToClipboard(toPlusCc)
+    });
+  }
+
+  if (fromPlusCc.length > 0) {
+    await createMenuItem("copy-from-cc", `Copy From + Cc (${fromPlusCc.length})`, {
+      action: async () => copyToClipboard(fromPlusCc)
+    });
+  }
+}
+
+// Adds one menu item for each individual email address, so the user can copy just one address.
+// To keep the menu readable, only the first 15 addresses are shown.
+async function createIndividualEmailItems(emailData) {
+  const maxIndividualEmails = 15;
+  const emailsToShow = emailData.all.slice(0, maxIndividualEmails);
+
+  for (let i = 0; i < emailsToShow.length; i++) {
+    const email = emailsToShow[i];
+    const id = `email-item-${i}`;
+    await createMenuItem(id, email, {
+      action: async () => copyToClipboard([email])
+    });
+  }
+
+  if (emailData.all.length > maxIndividualEmails) {
+    await createMenuItem("email-limited", `... and ${emailData.all.length - maxIndividualEmails} more`, { enabled: false });
+  }
+}
+
+// Builds the full results menu after addresses have been found.
+// The order depends on the user's setting: individual addresses can appear above or below the copy buttons.
+async function createResultsMenu(emailData) {
+  const showIndividualEmailsAtTop = currentSettings.individualEmailsPosition === "top";
+
+  await createMenuItem("email-header", `Found ${emailData.all.length} email address(es)`, { enabled: false });
+
+  if (showIndividualEmailsAtTop) {
+    await createIndividualEmailItems(emailData);
+    await createSectionSeparator();
+    await createCopyActionItems(emailData);
+  } else {
+    await createCopyActionItems(emailData);
+    await createSectionSeparator();
+    await createIndividualEmailItems(emailData);
+  }
+
+  await createSectionSeparator();
+  await createMenuItem("open-settings", "Open Settings", {
+    action: async () => {
+      await browser.runtime.openOptionsPage();
+    }
+  });
+}
+
+// When the user changes settings, reload them so the extension uses the new choices straight away.
 browser.storage.onChanged.addListener(() => {
   loadSettings();
 });
 
+// Runs the correct action when the user clicks one of our menu items.
 browser.menus.onClicked.addListener(async (info, tab) => {
   const action = menuActions.get(info.menuItemId);
   if (!action) {
@@ -269,6 +378,8 @@ browser.menus.onClicked.addListener(async (info, tab) => {
   }
 });
 
+// Runs when the user opens the extension menu.
+// It scans the current message, builds the menu, and shows either results or a "nothing found" message.
 browser.menus.onShown.addListener(async (info, tab) => {
   if (!isActionMenuShown(info)) {
     return;
@@ -291,6 +402,7 @@ browser.menus.onShown.addListener(async (info, tab) => {
     if (emailData.all.length === 0) {
       await createMenuItem("email-header", "Found 0 email address(es)", { enabled: false });
       await createMenuItem("no-results", "No email addresses found", { enabled: false });
+      await createSectionSeparator();
       await createMenuItem("open-settings", "Open Settings", {
         action: async () => {
           await browser.runtime.openOptionsPage();
@@ -300,66 +412,7 @@ browser.menus.onShown.addListener(async (info, tab) => {
       return;
     }
 
-    const toPlusCc = [...new Set([...emailData.to, ...emailData.cc])];
-
-    await createMenuItem("email-header", `Found ${emailData.all.length} email address(es)`, { enabled: false });
-
-    await createMenuItem("copy-all", `Copy All (${emailData.all.length})`, {
-      action: async () => copyToClipboard(emailData.all)
-    });
-
-    if (emailData.to.length > 0) {
-      await createMenuItem("copy-to", `Copy To (${emailData.to.length})`, {
-        action: async () => copyToClipboard(emailData.to)
-      });
-    }
-
-    if (emailData.from.length > 0) {
-      await createMenuItem("copy-from", `Copy From (${emailData.from.length})`, {
-        action: async () => copyToClipboard(emailData.from)
-      });
-    }
-
-    if (emailData.cc.length > 0) {
-      await createMenuItem("copy-cc", `Copy Cc (${emailData.cc.length})`, {
-        action: async () => copyToClipboard(emailData.cc)
-      });
-    }
-
-    if (toPlusCc.length > 0) {
-      await createMenuItem("copy-to-cc", `Copy To + Cc (${toPlusCc.length})`, {
-        action: async () => copyToClipboard(toPlusCc)
-      });
-    }
-
-    const fromPlusCc = [...new Set([...emailData.from, ...emailData.cc])];
-    if (fromPlusCc.length > 0) {
-      await createMenuItem("copy-from-cc", `Copy From + Cc (${fromPlusCc.length})`, {
-        action: async () => copyToClipboard(fromPlusCc)
-      });
-    }
-
-    await createSectionSeparator();
-
-    const maxIndividualEmails = 15;
-    const emailsToShow = emailData.all.slice(0, maxIndividualEmails);
-    for (let i = 0; i < emailsToShow.length; i++) {
-      const email = emailsToShow[i];
-      const id = `email-item-${i}`;
-      await createMenuItem(id, email, {
-        action: async () => copyToClipboard([email])
-      });
-    }
-
-    if (emailData.all.length > maxIndividualEmails) {
-      await createMenuItem("email-limited", `... and ${emailData.all.length - maxIndividualEmails} more`, { enabled: false });
-    }
-
-    await createMenuItem("open-settings", "Open Settings", {
-      action: async () => {
-        await browser.runtime.openOptionsPage();
-      }
-    });
+    await createResultsMenu(emailData);
 
     await browser.menus.refresh();
   } catch (error) {
@@ -367,11 +420,12 @@ browser.menus.onShown.addListener(async (info, tab) => {
   }
 });
 
+// Cleans up the menu when the user closes it, so old items do not stick around.
 browser.menus.onHidden.addListener(async () => {
   await removeAllMenuItems();
 });
 
+// Loads settings as soon as the extension starts.
 (async () => {
   await loadSettings();
 })();
-

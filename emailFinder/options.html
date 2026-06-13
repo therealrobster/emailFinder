@@ -11,6 +11,21 @@
     <h1>eMail Address Finder Settings</h1>
 
     <section class="settings-section">
+      <h2>Menu Layout</h2>
+      <p class="section-description">Choose where individual email addresses appear in the menu</p>
+      <fieldset class="radio-group">
+        <label class="radio-option">
+          <input type="radio" name="individualEmailsPosition" value="bottom" checked>
+          Below copy actions (default)
+        </label>
+        <label class="radio-option">
+          <input type="radio" name="individualEmailsPosition" value="top">
+          Above copy actions
+        </label>
+      </fieldset>
+    </section>
+
+    <section class="settings-section">
       <h2>Exclude Email Addresses</h2>
       <p class="section-description">Enter email addresses to exclude from results (one per line)</p>
       <textarea id="addressBlacklist" placeholder="user@example.com&#10;test@domain.com" rows="6"></textarea>

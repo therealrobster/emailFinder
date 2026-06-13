@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "version": "0.1.3",
+  "version": "0.1.4",
   "name": "eMail Address Finder",
   "author": "makingStuffForFun",
   "description": "Extract and manage email addresses from messages with smart filtering",
