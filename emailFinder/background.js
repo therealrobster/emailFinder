@@ -102,6 +102,48 @@ function collectInlineText(parts) {
   return chunks.join("\n");
 }
 
+// Turns compose window recipient fields into plain text so we can search them for email addresses.
+function composeRecipientsToText(recipients) {
+  if (!recipients) {
+    return "";
+  }
+
+  const list = Array.isArray(recipients) ? recipients : [recipients];
+  const parts = [];
+
+  for (const recipient of list) {
+    if (typeof recipient === "string") {
+      parts.push(recipient);
+    }
+  }
+
+  return parts.join(", ");
+}
+
+// Combines multiple email result sets into one, removing duplicates in each category.
+function mergeEmailData(...dataSets) {
+  const merged = getEmptyEmailData();
+
+  for (const data of dataSets) {
+    merged.to = [...new Set([...merged.to, ...data.to])];
+    merged.cc = [...new Set([...merged.cc, ...data.cc])];
+    merged.from = [...new Set([...merged.from, ...data.from])];
+    merged.body = [...new Set([...merged.body, ...data.body])];
+    merged.all = [...new Set([...merged.all, ...data.all])];
+  }
+
+  return merged;
+}
+
+// Checks whether the menu was opened from a compose or reply window rather than the inbox.
+function isComposeContext(info) {
+  if (!info || !Array.isArray(info.contexts)) {
+    return false;
+  }
+
+  return info.contexts.includes("compose_action_menu");
+}
+
 // Figures out which email message the user is looking at right now.
 // Tries a few different ways because Thunderbird can provide the message in different places.
 async function resolveCurrentMessage(info, tab) {
@@ -137,52 +179,116 @@ async function resolveCurrentMessage(info, tab) {
   return null;
 }
 
-// Scans the current message and collects email addresses from the To, Cc, From, and body fields.
-// Blocked addresses and domains are removed before the results are returned.
-async function getEmailAddresses(info, tab) {
+// Scans a single saved message and collects email addresses from its To, Cc, From, and body fields.
+async function getEmailAddressesFromMessage(message) {
+  if (!message) {
+    return getEmptyEmailData();
+  }
+
+  let toEmails = extractEmailsFromText(Array.isArray(message.recipients) ? message.recipients.join(",") : message.recipients);
+  let ccEmails = extractEmailsFromText(Array.isArray(message.ccList) ? message.ccList.join(",") : message.ccList);
+  let fromEmails = extractEmailsFromText(message.author);
+
   try {
-    const message = await resolveCurrentMessage(info, tab);
-    if (!message) {
-      return getEmptyEmailData();
-    }
+    const fullMessage = await messenger.messages.getFull(message.id);
+    const headers = fullMessage && fullMessage.headers ? fullMessage.headers : null;
 
-    let toEmails = extractEmailsFromText(Array.isArray(message.recipients) ? message.recipients.join(",") : message.recipients);
-    let ccEmails = extractEmailsFromText(Array.isArray(message.ccList) ? message.ccList.join(",") : message.ccList);
-    let fromEmails = extractEmailsFromText(message.author);
+    const headerTo = getHeaderEmails(headers, "to");
+    const headerCc = getHeaderEmails(headers, "cc");
+    const headerFrom = getHeaderEmails(headers, "from");
 
-    try {
-      const fullMessage = await messenger.messages.getFull(message.id);
-      const headers = fullMessage && fullMessage.headers ? fullMessage.headers : null;
+    toEmails = [...new Set([...toEmails, ...headerTo])];
+    ccEmails = [...new Set([...ccEmails, ...headerCc])];
+    fromEmails = [...new Set([...fromEmails, ...headerFrom])];
+  } catch (error) {
+    console.warn("Header extraction via getFull unavailable:", error);
+  }
 
-      const headerTo = getHeaderEmails(headers, "to");
-      const headerCc = getHeaderEmails(headers, "cc");
-      const headerFrom = getHeaderEmails(headers, "from");
+  let bodyEmails = [];
+  try {
+    const inlineParts = await messenger.messages.listInlineTextParts(message.id);
+    const inlineText = collectInlineText(inlineParts);
+    bodyEmails = extractEmailsFromText(inlineText);
+  } catch (error) {
+    console.warn("Body extraction unavailable:", error);
+  }
 
-      toEmails = [...new Set([...toEmails, ...headerTo])];
-      ccEmails = [...new Set([...ccEmails, ...headerCc])];
-      fromEmails = [...new Set([...fromEmails, ...headerFrom])];
-    } catch (error) {
-      console.warn("Header extraction via getFull unavailable:", error);
-    }
+  const allEmails = [...new Set([...toEmails, ...ccEmails, ...fromEmails, ...bodyEmails])];
 
-    let bodyEmails = [];
-    try {
-      const inlineParts = await messenger.messages.listInlineTextParts(message.id);
-      const inlineText = collectInlineText(inlineParts);
-      bodyEmails = extractEmailsFromText(inlineText);
-    } catch (error) {
-      console.warn("Body extraction unavailable:", error);
-    }
+  return {
+    to: filterEmails(toEmails),
+    cc: filterEmails(ccEmails),
+    from: filterEmails(fromEmails),
+    body: filterEmails(bodyEmails),
+    all: filterEmails(allEmails)
+  };
+}
+
+// Loads a message by its ID and scans it for email addresses.
+async function getEmailAddressesFromMessageId(messageId) {
+  try {
+    const message = await messenger.messages.get(messageId);
+    return await getEmailAddressesFromMessage(message);
+  } catch (error) {
+    console.warn("Could not load related message:", error);
+    return getEmptyEmailData();
+  }
+}
+
+// Scans the open compose or reply window for email addresses in To, Cc, From, Bcc, and the message body.
+// If the user is replying to a message, the original message is scanned as well.
+async function getEmailAddressesFromCompose(tab) {
+  if (!tab || tab.id === undefined || !messenger.compose || !messenger.compose.getComposeDetails) {
+    return getEmptyEmailData();
+  }
+
+  try {
+    const details = await messenger.compose.getComposeDetails(tab.id);
+
+    let toEmails = extractEmailsFromText(composeRecipientsToText(details.to));
+    let ccEmails = extractEmailsFromText(composeRecipientsToText(details.cc));
+    const bccEmails = extractEmailsFromText(composeRecipientsToText(details.bcc));
+    let fromEmails = extractEmailsFromText(composeRecipientsToText(details.from));
+    const replyToEmails = extractEmailsFromText(composeRecipientsToText(details.replyTo));
+
+    toEmails = [...new Set([...toEmails, ...replyToEmails])];
+
+    const bodyText = details.isPlainText ? (details.plainTextBody || "") : (details.body || "");
+    let bodyEmails = extractEmailsFromText(bodyText);
+    bodyEmails = [...new Set([...bodyEmails, ...bccEmails])];
 
     const allEmails = [...new Set([...toEmails, ...ccEmails, ...fromEmails, ...bodyEmails])];
 
-    return {
+    const composeData = {
       to: filterEmails(toEmails),
       cc: filterEmails(ccEmails),
       from: filterEmails(fromEmails),
       body: filterEmails(bodyEmails),
       all: filterEmails(allEmails)
     };
+
+    if (details.relatedMessageId) {
+      const originalData = await getEmailAddressesFromMessageId(details.relatedMessageId);
+      return mergeEmailData(composeData, originalData);
+    }
+
+    return composeData;
+  } catch (error) {
+    console.error("Error extracting email addresses from compose window:", error);
+    return getEmptyEmailData();
+  }
+}
+
+// Scans the current message and collects email addresses from the To, Cc, From, and body fields.
+// Blocked addresses and domains are removed before the results are returned.
+async function getEmailAddresses(info, tab) {
+  try {
+    if (isComposeContext(info)) {
+      return await getEmailAddressesFromCompose(tab);
+    }
+
+    const message = await resolveCurrentMessage(info, tab);
+    return await getEmailAddressesFromMessage(message);
   } catch (error) {
     console.error("Error extracting email addresses:", error);
     return getEmptyEmailData();

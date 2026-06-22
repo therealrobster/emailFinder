@@ -15,7 +15,7 @@
   - [x] Store user preferences in browser storage
   - [x] Load preferences on extension startup
 - [x] **Menu Layout Setting**: Let users choose whether individual addresses appear above or below copy actions
-- [x] **Compose Window Support**: Make the extension menu available in the compose toolbar
+- [x] **Compose Window Support**: Scan addresses in compose, reply, and forward windows via the compose API
 - [x] **Scanning Indicator**: Show a "Scanning for email addresses..." message while the menu is loading
 - [x] **Contributor PR #4**: Integrate Copy From + Cc request from community pull request
 
@@ -56,6 +56,7 @@
   - [x] Filter edge cases
   - [x] Menu layout setting (top vs bottom)
   - [x] Menu divider and settings placement
+  - [x] Compose and reply windows
 
 ## Polish & Submission
 

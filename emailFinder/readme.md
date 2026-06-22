@@ -4,51 +4,48 @@ A Thunderbird extension that helps users extract and manage email addresses from
 
 ### Features
 
-- **Extract Email Addresses**: Automatically finds email addresses in message headers (To, Cc, From) and body
+- **Extract Email Addresses**: Finds addresses in message headers (To, Cc, From) and body
+- **Compose & Reply Support**: Also works in compose windows, scanning draft recipients and the original message when replying
 - **Smart Deduplication**: Automatically removes duplicate email addresses
 - **Multiple Copy Options**:
-  - Copy To (recipients only)
-  - Copy Cc (cc recipients only)
-  - Copy To + Cc (combined recipients)
-  - Copy All (all found emails)
-  - Copy From (from recipients only)
-  - Copy From + CC (combined recipients)
-- **Flexible Filtering**: 
+  - Copy All
+  - Copy To
+  - Copy Cc
+  - Copy From
+  - Copy To + Cc
+  - Copy From + Cc
+- **Individual Addresses**: Click any address in the menu to copy just that one (up to 15 shown)
+- **Menu Layout Setting**: Choose whether individual addresses appear above or below copy actions
+- **Flexible Filtering**:
   - Exclude specific email addresses
   - Exclude entire domains
-- **Settings Page**: Manage your blacklist directly from Firefox/Thunderbird preferences
 
 ### Usage
 
-1. Open an email message in Thunderbird
-2. Click the "eMail Address Finder" button in the compose or message display toolbar
-3. Choose from the menu options:
-   - **Copy All** - Copy all filtered emails
-   - **Copy To** - Copy only To field recipients
-   - **Copy Cc** - Copy only Cc field recipients
-   - **Copy To + Cc** - Copy both To and Cc recipients
-   - **Copy From** - Copy recipients only
-   - **Copy From + CC** - Copy From and CC
-   - Individual emails - Click any specific email address to copy just that address
+#### Reading a message
+
+1. Open an email in Thunderbird
+2. Click **eMail Address Finder** in the message display toolbar
+3. Choose a copy action or individual address
+
+#### Replying or composing
+
+1. Open a compose window (new, reply, reply all, or forward)
+2. Click **eMail Address Finder** in the compose toolbar
+3. Choose a copy action or individual address
 
 ### Settings
 
-Access the settings through Thunderbird's Add-ons page:
+Access settings through Thunderbird's Add-ons page, or choose **Open Settings** from the extension menu.
 
-1. Open Thunderbird Preferences/Settings
-2. Go to Extensions
-3. Click "Options" for eMail Address Finder
-4. Configure:
-   - **Excluded Addresses**: Enter email addresses to ignore (one per line)
-   - **Excluded Domains**: Enter domain names to ignore (one per line)
+Configure:
 
-All excluded items are case-insensitive for convenience.
+- **Menu Layout** — where individual addresses appear in the menu
+- **Excluded Addresses** — email addresses to ignore (one per line)
+- **Excluded Domains** — domain names to ignore (one per line)
 
-### Accessibility
-
-This extension is designed with accessibility in mind, supporting users with RSI and other physical disabilities by reducing repetitive mouse interactions. Future versions will include keyboard shortcut support and voice command compatibility (e.g., with Talon Voice).
+All excluded items are case-insensitive.
 
 ### About
 
 Created by makingStuffForFun
-
